@@ -14,12 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.superbiz.moviefun;
+package org.superbiz.moviefun.movies;
 
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
 
-import javax.ejb.Stateless;
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
 import javax.persistence.TypedQuery;
@@ -30,29 +33,40 @@ import java.util.List;
 @Repository
 public class MoviesBean {
 
-    @PersistenceContext
+
+    @PersistenceContext(unitName = "movies")
     private EntityManager entityManager;
 
     public Movie find(Long id) {
         return entityManager.find(Movie.class, id);
     }
 
-    @Transactional
     public void addMovie(Movie movie) {
+
+        // the code in this method executes in a transactional context
+
         entityManager.persist(movie);
+
     }
 
     public void editMovie(Movie movie) {
-        entityManager.merge(movie);
+
+                entityManager.merge(movie);
+
     }
 
     public void deleteMovie(Movie movie) {
-        entityManager.remove(movie);
+
+                entityManager.remove(movie);
+
     }
 
     public void deleteMovieId(long id) {
-        Movie movie = entityManager.find(Movie.class, id);
-        deleteMovie(movie);
+
+                Movie movie = entityManager.find(Movie.class, id);
+                deleteMovie(movie);
+
+
     }
 
     public List<Movie> getMovies() {
