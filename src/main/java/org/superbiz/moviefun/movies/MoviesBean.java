@@ -16,18 +16,11 @@
  */
 package org.superbiz.moviefun.movies;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionCallback;
-import org.springframework.transaction.support.TransactionTemplate;
 
-import javax.annotation.PostConstruct;
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
-import javax.persistence.Query;
 import javax.persistence.TypedQuery;
 import javax.persistence.criteria.*;
 import javax.persistence.metamodel.EntityType;
@@ -36,37 +29,29 @@ import java.util.List;
 @Repository
 public class MoviesBean {
 
-    @Autowired
-    private TransactionTemplate moviesTransactionTemplate;
-
-    @PersistenceContext(unitName = "movies")
+    @PersistenceContext
     private EntityManager entityManager;
-
-    @PostConstruct
-    public void init() {
-        moviesTransactionTemplate.execute(status -> {
-            Query q = entityManager.createQuery("delete from Movie");
-            q.executeUpdate();
-            return null;
-        });
-    }
 
     public Movie find(Long id) {
         return entityManager.find(Movie.class, id);
     }
 
+    @Transactional
     public void addMovie(Movie movie) {
         entityManager.persist(movie);
     }
 
+    @Transactional
     public void editMovie(Movie movie) {
         entityManager.merge(movie);
     }
 
+    @Transactional
     public void deleteMovie(Movie movie) {
         entityManager.remove(movie);
     }
 
+    @Transactional
     public void deleteMovieId(long id) {
         Movie movie = entityManager.find(Movie.class, id);
         deleteMovie(movie);

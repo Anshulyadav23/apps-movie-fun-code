@@ -11,5 +11,5 @@ $ mvn clean package -DskipTests -Dmaven.test.skip=true
 ## Run Smoke Tests against specific URL
 
 ```
-$ MOVIE_FUN_URL=http://localhost:8080/ mvn test
+$ MOVIE_FUN_URL=http://moviefun.example.com mvn test
 ```

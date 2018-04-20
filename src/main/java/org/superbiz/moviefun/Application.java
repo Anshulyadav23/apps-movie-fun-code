@@ -1,31 +1,18 @@
 package org.superbiz.moviefun;
 
-import javax.persistence.EntityManagerFactory;
-import javax.sql.DataSource;
-
-import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
-import com.zaxxer.hikari.HikariConfig;
-import org.springframework.beans.factory.annotation.Qualifier;
+import com.amazonaws.auth.AWSCredentials;
+import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.services.s3.AmazonS3Client;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
-import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
 import org.springframework.boot.web.servlet.ServletRegistrationBean;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
-import org.springframework.orm.jpa.JpaTransactionManager;
-import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
-import org.springframework.orm.jpa.vendor.Database;
-import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
-import org.springframework.transaction.PlatformTransactionManager;
+import org.superbiz.moviefun.blobstore.BlobStore;
+import org.superbiz.moviefun.blobstore.S3Store;
+import org.superbiz.moviefun.blobstore.ServiceCredentials;
 
-import com.zaxxer.hikari.HikariDataSource;
-import org.springframework.transaction.support.TransactionTemplate;
-
-@SpringBootApplication(exclude = {
-        DataSourceAutoConfiguration.class,
-        HibernateJpaAutoConfiguration.class
-})
+@SpringBootApplication
 public class Application {
 
     public static void main(String... args) {
@@ -38,77 +25,24 @@ public class Application {
     }
 
     @Bean
-    public DatabaseServiceCredentials databaseServiceCredentials() {
-        return new DatabaseServiceCredentials(System.getenv("VCAP_SERVICES"));
+    public BlobStore blobStore(ServiceCredentials serviceCredentials, @Value("${s3.endpointUrl:#{null}}") String s3EndpointUrl
+    ) {
+        String s3AccessKey = serviceCredentials.getCredential("moviefun-s3", "aws-s3", "access_key_id");
+        String s3SecretKey = serviceCredentials.getCredential("moviefun-s3", "aws-s3", "secret_access_key");
+        String s3BucketName = serviceCredentials.getCredential("moviefun-s3", "aws-s3", "bucket");
+
+        AWSCredentials credentials = new BasicAWSCredentials(s3AccessKey, s3SecretKey);
+        AmazonS3Client s3Client = new AmazonS3Client(credentials);
+
+        if (s3EndpointUrl != null) {
+            s3Client.setEndpoint(s3EndpointUrl);
+        }
+
+        return new S3Store(s3Client, s3BucketName);
     }
 
     @Bean
-    public DataSource moviesDataSource(DatabaseServiceCredentials databaseServiceCredentials) {
-        MysqlDataSource dataSource = new MysqlDataSource();
-        dataSource.setURL(databaseServiceCredentials.jdbcUrl("movies-mysql", "p-mysql"));
-        HikariConfig config = new HikariConfig();
-        config.setDataSource(dataSource);
-        HikariDataSource hDataSource = new HikariDataSource(config);
-        return hDataSource;
-    }
-
-    @Bean
-    public DataSource albumsDataSource(DatabaseServiceCredentials serviceCredentials) {
-        MysqlDataSource dataSource = new MysqlDataSource();
-        dataSource.setURL(serviceCredentials.jdbcUrl("albums-mysql", "p-mysql"));
-
-        HikariConfig config = new HikariConfig();
-        config.setDataSource(dataSource);
-        HikariDataSource hDataSource = new HikariDataSource(config);
-        return hDataSource;
-    }
-
-    @Bean
-    public HibernateJpaVendorAdapter jpaVendorAdapter() {
-        HibernateJpaVendorAdapter adaptor = new HibernateJpaVendorAdapter();
-        adaptor.setDatabase(Database.MYSQL);
-        adaptor.setDatabasePlatform("org.hibernate.dialect.MySQL5Dialect");
-        adaptor.setGenerateDdl(true);
-        return adaptor;
-    }
-
-    @Bean
-    public LocalContainerEntityManagerFactoryBean albumsLocalContainerEntityManagerFactoryBean(DataSource albumsDataSource, HibernateJpaVendorAdapter jpaVendorAdapter) {
-        LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
-        em.setDataSource(albumsDataSource);
-        em.setJpaVendorAdapter(jpaVendorAdapter);
-        em.setPackagesToScan("org.superbiz.moviefun.albums");
-        em.setPersistenceUnitName("albums");
-        return em;
-    }
-
-    @Bean
-    public LocalContainerEntityManagerFactoryBean movieseLocalContainerEntityManagerFactoryBean(DataSource moviesDataSource, HibernateJpaVendorAdapter jpaVendorAdapter) {
-        LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
-        em.setDataSource(moviesDataSource);
-        em.setJpaVendorAdapter(jpaVendorAdapter);
-        em.setPackagesToScan("org.superbiz.moviefun.movies");
-        em.setPersistenceUnitName("movies");
-        return em;
-    }
-
-    @Bean
-    public PlatformTransactionManager moviesPlatformTransactionManager( EntityManagerFactory movieseLocalContainerEntityManagerFactoryBean) {
-        return new JpaTransactionManager(movieseLocalContainerEntityManagerFactoryBean);
-    }
-
-    @Bean
-    public PlatformTransactionManager albumsPlatformTransactionManager(EntityManagerFactory albumsLocalContainerEntityManagerFactoryBean) {
-        return new JpaTransactionManager(albumsLocalContainerEntityManagerFactoryBean);
-    }
-
-    @Bean
-    TransactionTemplate albumsTransactionTemplate(PlatformTransactionManager albumsPlatformTransactionManager) {
-        return new TransactionTemplate(albumsPlatformTransactionManager);
-    }
-
-    @Bean
-    TransactionTemplate moviesTransactionTemplate(PlatformTransactionManager moviesPlatformTransactionManager) {
-        return new TransactionTemplate(moviesPlatformTransactionManager);
+    ServiceCredentials serviceCredentials(@Value("${vcap.services}") String vcapServices) {
+        return new ServiceCredentials(vcapServices);
     }
 }

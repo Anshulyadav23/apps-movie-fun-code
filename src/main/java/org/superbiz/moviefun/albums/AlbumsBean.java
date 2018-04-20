@@ -16,41 +16,27 @@
  */
 package org.superbiz.moviefun.albums;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionCallback;
-import org.springframework.transaction.support.TransactionTemplate;
 
-import javax.annotation.PostConstruct;
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
-import javax.persistence.Query;
 import javax.persistence.criteria.CriteriaQuery;
 import java.util.List;
 
 @Repository
 public class AlbumsBean {
 
-    @PersistenceContext(unitName = "albums")
+    @PersistenceContext
     private EntityManager entityManager;
 
-    @Autowired
-    private TransactionTemplate albumsTransactionTemplate;
-
-    @PostConstruct
-    public void init() {
-        albumsTransactionTemplate.execute(status -> {
-            Query q = entityManager.createQuery("delete from Album");
-            q.executeUpdate();
-            return null;
-        });
-    }
-
+    @Transactional
     public void addAlbum(Album album) {
         entityManager.persist(album);
+    }
+
+    public Album find(long id) {
+        return entityManager.find(Album.class, id);
     }
 
     public List<Album> getAlbums() {

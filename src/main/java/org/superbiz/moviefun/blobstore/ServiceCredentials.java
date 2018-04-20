@@ -1,4 +1,4 @@
-package org.superbiz.moviefun;
+package org.superbiz.moviefun.blobstore;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -6,15 +6,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.Objects;
 
-public class DatabaseServiceCredentials {
+public class ServiceCredentials {
 
     private final String vcapServices;
 
-    public DatabaseServiceCredentials(String vcapServices) {
+    public ServiceCredentials(String vcapServices) {
         this.vcapServices = vcapServices;
     }
 
-    public String jdbcUrl(String name, String type) {
+    public String getCredential(String serviceName, String serviceType, String credentialKey) {
         ObjectMapper objectMapper = new ObjectMapper();
 
         JsonNode root;
@@ -25,14 +25,14 @@ public class DatabaseServiceCredentials {
             throw new IllegalStateException("No VCAP_SERVICES found", e);
         }
 
-        JsonNode services = root.path(type);
+        JsonNode services = root.path(serviceType);
 
         for (JsonNode service : services) {
-            if (Objects.equals(service.get("name").asText(), name)) {
-                return service.get("credentials").get("jdbcUrl").asText();
+            if (Objects.equals(service.get("name").asText(), serviceName)) {
+                return service.get("credentials").get(credentialKey).asText();
             }
         }
 
-        throw new IllegalStateException("No "+ name + " found in VCAP_SERVICES");
+        throw new IllegalStateException("No "+ serviceName + " found in VCAP_SERVICES");
     }
 }
